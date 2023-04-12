@@ -1,0 +1,178 @@
+Запросы:
+
+SELECT COUNT(DISTINCT l.TeacherId) AS "Количество преподавателей"
+FROM Lectures l
+JOIN Teachers t ON l.TeacherId = t.Id
+JOIN GroupsLectures gl ON l.Id = gl.LectureId
+JOIN Groups g ON gl.GroupId = g.Id
+JOIN Departments d ON g.DepartmentId = d.Id
+WHERE d.Name = 'Software Development';
+
+SELECT COUNT(*) AS lecture_count
+FROM lectures
+WHERE teacher_id = (
+  SELECT id
+  FROM teachers
+  WHERE name = 'Dave McQueen'
+);
+
+SELECT COUNT(*) AS lecture_count
+FROM lectures
+WHERE lecture_room = 'D201';
+
+SELECT lecture_room, COUNT(*) AS lecture_count
+FROM lectures
+GROUP BY lecture_room;
+
+SELECT COUNT(DISTINCT lecture_id) AS student_count
+FROM groups_lectures gl
+JOIN lectures l ON gl.lecture_id = l.id
+JOIN teachers t ON l.teacher_id = t.id
+JOIN groups g ON gl.group_id = g.id
+WHERE t.surname = 'Underhill' AND t.name = 'Jack';
+
+SELECT AVG(CAST(t.salary AS NUMERIC)) AS avg_salary
+FROM teachers t
+JOIN lectures l ON t.id = l.teacher_id
+JOIN subjects s ON l.subject_id = s.id
+JOIN groups_lectures gl ON gl.lecture_id = l.id
+JOIN groups g ON gl.group_id = g.id
+JOIN departments d ON g.department_id = d.id
+JOIN faculties f ON d.faculty_id = f.id
+WHERE f.name = 'Computer Science';
+
+SELECT AVG(d.financing::numeric) AS avg_financing
+FROM departments d
+
+SELECT t.id, t.name || ' ' || t.surname AS full_name, COUNT(l.id) AS number_of_lectures
+FROM teachers t
+JOIN lectures l ON t.id = l.teacher_id
+GROUP BY t.id, full_name
+ORDER BY full_name;
+
+SELECT l.day_of_week, COUNT(l.id) AS number_of_lectures
+FROM lectures l
+GROUP BY l.day_of_week
+ORDER BY l.day_of_week;
+
+SELECT l.lecture_room, COUNT(DISTINCT d.id) AS number_of_departments
+FROM lectures l
+JOIN groups_lectures gl ON l.id = gl.lecture_id
+JOIN groups g ON gl.group_id = g.id
+JOIN departments d ON g.department_id = d.id
+GROUP BY l.lecture_room
+ORDER BY l.lecture_room;
+
+SELECT f.id, f.name, COUNT(DISTINCT s.id) AS number_of_subjects
+FROM faculties f
+JOIN departments d ON f.id = d.faculty_id
+JOIN groups g ON d.id = g.department_id
+JOIN groups_lectures gl ON g.id = gl.group_id
+JOIN lectures l ON gl.lecture_id = l.id
+JOIN subjects s ON l.subject_id = s.id
+GROUP BY f.id, f.name
+ORDER BY f.id;
+
+
+Заполнение таблицы:
+
+INSERT INTO faculties (id, name)
+VALUES (1, 'Факультет информационных технологий'),
+       (2, 'Факультет экономики'),
+       (3, 'Факультет иностранных языков'),
+       (4, 'Факультет социологии'),
+       (5, 'Факультет прикладной математики');
+
+INSERT INTO departments (id, financing, name, faculty_id)
+VALUES (1, 1500000, 'Отдел информационных технологий', 1),
+       (2, 2000000, 'Отдел прикладной математики', 1),
+       (3, 1750000, 'Отдел экономики', 2),
+       (4, 2500000, 'Отдел социологии', 2),
+       (5, 1250000, 'Отдел иностранных языков', 3);
+
+INSERT INTO groups (id, name, year, department_id)
+VALUES (1, 'Группа 101', 4, 1),
+       (2, 'Группа 102', 1, 2),
+       (3, 'Группа 103', 2, 1),
+       (4, 'Группа 104', 5, 3),
+       (5, 'Группа 105', 2, 4);
+
+INSERT INTO subjects (id, name)
+VALUES (1, 'Математика'),
+       (2, 'Физика'),
+       (3, 'Химия'),
+       (4, 'История'),
+       (5, 'Биология');
+
+INSERT INTO teachers (id, name, salary, surname)
+VALUES (1, 'Иван', 50000, 'Петров'),
+       (2, 'Елена', 45000, 'Смирнова'),
+       (3, 'Алексей', 55000, 'Иванов'),
+       (4, 'Ольга', 48000, 'Соколова'),
+       (5, 'Дмитрий', 52000, 'Кузнецов');
+
+INSERT INTO lectures (id, day_of_week, lecture_room, subject_id, teacher_id)
+VALUES (1, 1, '101', 1, 1),
+       (2, 2, '202', 2, 2),
+       (3, 3, '303', 3, 3),
+       (4, 4, '404', 4, 4),
+       (5, 5, '505', 5, 5);
+
+INSERT INTO groups_lectures (id, group_id, lecture_id)
+VALUES (1, 1, 1),
+       (2, 2, 3),
+       (3, 3, 2),
+       (4, 4, 4),
+       (5, 5, 5);
+
+Создание таблицы:
+
+CREATE TABLE faculties (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE departments (
+  id SERIAL PRIMARY KEY,
+  financing MONEY NOT NULL DEFAULT 0,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  faculty_id INT NOT NULL REFERENCES faculties(id)
+);
+
+CREATE TABLE groups (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(10) NOT NULL UNIQUE,
+  year INTEGER NOT NULL CHECK (year BETWEEN 1 AND 5),
+  department_id INTEGER NOT NULL,
+  FOREIGN KEY (department_id) REFERENCES departments (id)
+);
+
+CREATE TABLE subjects (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE teachers (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  salary MONEY NOT NULL CHECK (salary >= CAST(0 AS MONEY)),
+  surname TEXT NOT NULL
+);
+
+CREATE TABLE lectures (
+  id SERIAL PRIMARY KEY,
+  day_of_week INTEGER NOT NULL CHECK (day_of_week >= 1 AND day_of_week <= 7),
+  lecture_room TEXT NOT NULL,
+  subject_id INTEGER NOT NULL,
+  teacher_id INTEGER NOT NULL,
+  FOREIGN KEY (subject_id) REFERENCES subjects (id),
+  FOREIGN KEY (teacher_id) REFERENCES teachers (id)
+);
+
+CREATE TABLE groups_lectures (
+  id SERIAL PRIMARY KEY,
+  group_id INTEGER NOT NULL,
+  lecture_id INTEGER NOT NULL,
+  FOREIGN KEY (group_id) REFERENCES groups (id),
+  FOREIGN KEY (lecture_id) REFERENCES lectures (id)
+);
